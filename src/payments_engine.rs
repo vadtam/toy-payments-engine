@@ -66,13 +66,8 @@ impl PaymentsEngine {
         }
         if disputed_tx.tx_type == TransactionType::Deposit {
             let amount = disputed_tx.amount.unwrap();
-            if amount < client.available {
-                client.available -= amount;
-                client.held += amount;
-            } else {
-                self.tx_db.remove_dispute(&tx.tx);
-                return;
-            }
+            client.available -= amount;
+            client.held += amount;
         } else if disputed_tx.tx_type == TransactionType::Withdrawal {
             let amount = disputed_tx.amount.unwrap();
             client.held += amount;
@@ -83,7 +78,6 @@ impl PaymentsEngine {
         }
         self.client_db.update_client(&client);
     }
-
 
     fn process_resolve(&mut self, tx: &Transaction) {
         let mut client = self.client_db.get_client(tx.client);
