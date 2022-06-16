@@ -118,6 +118,7 @@ impl PaymentsEngine {
             client.locked = true;
         }
         self.tx_db.remove_dispute(&tx.tx);
+        self.tx_db.remove_tx(&tx.tx);
         self.client_db.update_client(&client);
     }
 

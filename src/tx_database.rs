@@ -16,6 +16,10 @@ impl TransactionDatabase {
         self.db.insert(tx.tx, *tx);
     }
 
+    pub fn remove_tx(&mut self, tx_id: &u32) {
+        self.db.remove(tx_id);
+    }
+
     pub fn is_tx_exists(&mut self, tx_id: &u32) -> bool {
         let tx_maybe = self.get_tx(tx_id);
         if tx_maybe.is_some() {
