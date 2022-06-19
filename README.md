@@ -5,7 +5,7 @@
 - $ cargo test
 ## Assumptions
 - Withdrawals that result in negative balance are skipped. But Distputes allow negative balance.
-- Maximum CSV file size is controlled by the server, for example 2MB, to have more predistable server RAM usage.
+- Maximum CSV file size is controlled by the server, for example 2MB, to have more predictable server RAM usage.
 ## Implementation details
 - The "history-enabled" runtime checks are used. For example, the transactions are validated first to have reasonable state, therefore later some transaction state-related checks are omitted.
 - If transaction already exists in database, it skips. 
