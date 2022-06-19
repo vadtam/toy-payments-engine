@@ -66,6 +66,8 @@ mod tests {
         assert_eq!(tx_db.is_tx_exists(&tx.tx), false);
         tx_db.add_tx(&tx);
         assert_eq!(tx_db.is_tx_exists(&tx.tx), true);
+        tx_db.remove_tx(&tx.tx);
+        assert_eq!(tx_db.is_tx_exists(&tx.tx), false);
     }
 
     #[test]

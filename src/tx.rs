@@ -13,6 +13,7 @@ pub enum TransactionType {
     Chargeback,
 }
 
+#[derive(PartialEq)]
 #[derive(Copy, Clone)]
 #[derive(Debug, Deserialize)]
 pub struct Transaction {

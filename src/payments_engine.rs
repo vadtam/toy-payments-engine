@@ -138,20 +138,9 @@ mod tests {
     use rust_decimal::Decimal;
     use crate::client::Client;
     use crate::tx::{Transaction, TransactionType};
-    use crate::payments_engine::get_payments_engine;
+    use crate::payments_engine::{PaymentsEngine, get_payments_engine};
 
-    #[test]
-    fn process_deposit_functionality() {
-        let mut engine = get_payments_engine();
-        let client = Client{
-            id: 1,
-            available: Decimal::from(0),
-            held: Decimal::from(0),
-            total: Decimal::from(0),
-            locked: false,
-        };
-        engine.client_db.update_client(&client);
-
+    fn perform_deposit_1(engine: &mut PaymentsEngine) {
         let tx = Transaction{
             tx_type: TransactionType::Deposit,
             client: 1,
@@ -159,12 +148,102 @@ mod tests {
             amount: Some(Decimal::from(1)),
         };
         engine.process_deposit(&tx);
-        let updated_client = engine.client_db.get_client(client.id);
+    }
+
+    fn perform_withdrawal_2(engine: &mut PaymentsEngine) {
+        let tx = Transaction{
+            tx_type: TransactionType::Withdrawal,
+            client: 1,
+            tx: 2,
+            amount: Some(Decimal::from(2)),
+        };
+        engine.process_withdrawal(&tx);
+    }
+
+    fn perform_dispute_tx1(engine: &mut PaymentsEngine) {
+        let tx3 = Transaction{
+            tx_type: TransactionType::Dispute,
+            client: 1,
+            tx: 1,
+            amount: None,
+        };
+        engine.process_dispute(&tx3);
+    }
+
+    fn perform_dispute_tx2(engine: &mut PaymentsEngine) {
+        let tx3 = Transaction{
+            tx_type: TransactionType::Dispute,
+            client: 1,
+            tx: 2,
+            amount: None,
+        };
+        engine.process_dispute(&tx3);
+    }
+
+    fn perform_resolve_tx1(engine: &mut PaymentsEngine) {
+        let tx4 = Transaction{
+            tx_type: TransactionType::Resolve,
+            client: 1,
+            tx: 1,
+            amount: None,
+        };
+        engine.process_resolve(&tx4);
+    }
+
+    fn perform_resolve_tx2(engine: &mut PaymentsEngine) {
+        let tx4 = Transaction{
+            tx_type: TransactionType::Resolve,
+            client: 1,
+            tx: 2,
+            amount: None,
+        };
+        engine.process_resolve(&tx4);
+    }
+
+    fn perform_chargeback_tx1(engine: &mut PaymentsEngine) {
+        let tx4 = Transaction{
+            tx_type: TransactionType::Chargeback,
+            client: 1,
+            tx: 1,
+            amount: None,
+        };
+        engine.process_chargeback(&tx4);
+    }
+
+    fn perform_chargeback_tx2(engine: &mut PaymentsEngine) {
+        let tx4 = Transaction{
+            tx_type: TransactionType::Chargeback,
+            client: 1,
+            tx: 2,
+            amount: None,
+        };
+        engine.process_chargeback(&tx4);
+    }
+
+    fn get_test_payments_engine_10() -> PaymentsEngine {
+        let mut engine = get_payments_engine();
+        let client = Client{
+            id: 1,
+            available: Decimal::from(10),
+            held: Decimal::from(0),
+            total: Decimal::from(10),
+            locked: false,
+        };
+        engine.client_db.update_client(&client);
+        engine
+    }
+
+    #[test]
+    fn process_deposit_functionality() {
+        let mut engine = get_test_payments_engine_10();
+        perform_deposit_1(&mut engine);
+        let client_id: u16 = 1;
+        let updated_client = engine.client_db.get_client(client_id);
         let expected_client = Client {
             id: 1,
-            available: Decimal::from(1),
+            available: Decimal::from(11),
             held: Decimal::from(0),
-            total: Decimal::from(1),
+            total: Decimal::from(11),
             locked: false,
         };
         assert_eq!(updated_client, expected_client);
@@ -172,25 +251,65 @@ mod tests {
 
     #[test]
     fn process_withdrawal_functionality() {
-        let mut engine = get_payments_engine();
-        let client = Client{
+        let mut engine = get_test_payments_engine_10();
+        perform_withdrawal_2(&mut engine);
+        let client_id: u16 = 1;
+        let updated_client = engine.client_db.get_client(client_id);
+        let expected_client = Client {
             id: 1,
-            available: Decimal::from(13),
+            available: Decimal::from(8),
             held: Decimal::from(0),
-            total: Decimal::from(13),
+            total: Decimal::from(8),
             locked: false,
         };
-        engine.client_db.update_client(&client);
+        assert_eq!(updated_client, expected_client);
+    }
 
-        let tx = Transaction{
-            tx_type: TransactionType::Withdrawal,
-            client: 1,
-            tx: 1,
-            amount: Some(Decimal::from(4)),
+    #[test]
+    fn process_dispute_deposit_functionality() {
+        let mut engine = get_test_payments_engine_10();
+        perform_deposit_1(&mut engine);
+        perform_withdrawal_2(&mut engine);
+        perform_dispute_tx1(&mut engine);
+        let client_id: u16 = 1;
+        let updated_client = engine.client_db.get_client(client_id);
+        let expected_client = Client {
+            id: 1,
+            available: Decimal::from(8),
+            held: Decimal::from(1),
+            total: Decimal::from(9),
+            locked: false,
         };
+        assert_eq!(updated_client, expected_client);
+    }
 
-        engine.process_withdrawal(&tx);
-        let updated_client = engine.client_db.get_client(client.id);
+    #[test]
+    fn process_dispute_withdrawal_functionality() {
+        let mut engine = get_test_payments_engine_10();
+        perform_deposit_1(&mut engine);
+        perform_withdrawal_2(&mut engine);
+        perform_dispute_tx2(&mut engine);
+        let client_id: u16 = 1;
+        let updated_client = engine.client_db.get_client(client_id);
+        let expected_client = Client {
+            id: 1,
+            available: Decimal::from(9),
+            held: Decimal::from(2),
+            total: Decimal::from(11),
+            locked: false,
+        };
+        assert_eq!(updated_client, expected_client);
+    }
+
+    #[test]
+    fn process_resolve_deposit_functionality() {
+        let mut engine = get_test_payments_engine_10();
+        perform_deposit_1(&mut engine);
+        perform_withdrawal_2(&mut engine);
+        perform_dispute_tx1(&mut engine);
+        perform_resolve_tx1(&mut engine);
+        let client_id: u16 = 1;
+        let updated_client = engine.client_db.get_client(client_id);
         let expected_client = Client {
             id: 1,
             available: Decimal::from(9),
@@ -202,197 +321,14 @@ mod tests {
     }
 
     #[test]
-    fn process_dispute_deposit_functionality() {
-        let mut engine = get_payments_engine();
-        let client = Client{
-            id: 1,
-            available: Decimal::from(0),
-            held: Decimal::from(0),
-            total: Decimal::from(0),
-            locked: false,
-        };
-        engine.client_db.update_client(&client);
-
-        let tx1 = Transaction{
-            tx_type: TransactionType::Deposit,
-            client: 1,
-            tx: 1,
-            amount: Some(Decimal::from(13)),
-        };
-        engine.process_deposit(&tx1);
-
-        let tx2 = Transaction{
-            tx_type: TransactionType::Withdrawal,
-            client: 1,
-            tx: 2,
-            amount: Some(Decimal::from(4)),
-        };
-        engine.process_withdrawal(&tx2);
-
-        let tx3 = Transaction{
-            tx_type: TransactionType::Dispute,
-            client: 1,
-            tx: 2,
-            amount: None,
-        };
-        engine.process_dispute(&tx3);
-        let updated_client = engine.client_db.get_client(client.id);
-        let expected_client = Client {
-            id: 1,
-            available: Decimal::from(9),
-            held: Decimal::from(4),
-            total: Decimal::from(13),
-            locked: false,
-        };
-        assert_eq!(updated_client, expected_client);
-    }
-
-    #[test]
-    fn process_dispute_withdrawal_functionality() {
-        let mut engine = get_payments_engine();
-        let client = Client{
-            id: 1,
-            available: Decimal::from(0),
-            held: Decimal::from(0),
-            total: Decimal::from(0),
-            locked: false,
-        };
-        engine.client_db.update_client(&client);
-
-        let tx1 = Transaction{
-            tx_type: TransactionType::Deposit,
-            client: 1,
-            tx: 1,
-            amount: Some(Decimal::from(13)),
-        };
-        engine.process_deposit(&tx1);
-
-        let tx2 = Transaction{
-            tx_type: TransactionType::Deposit,
-            client: 1,
-            tx: 2,
-            amount: Some(Decimal::from(4)),
-        };
-        engine.process_deposit(&tx2);
-
-        let tx3 = Transaction{
-            tx_type: TransactionType::Dispute,
-            client: 1,
-            tx: 2,
-            amount: None,
-        };
-        engine.process_dispute(&tx3);
-        let updated_client = engine.client_db.get_client(client.id);
-        let expected_client = Client {
-            id: 1,
-            available: Decimal::from(13),
-            held: Decimal::from(4),
-            total: Decimal::from(17),
-            locked: false,
-        };
-        assert_eq!(updated_client, expected_client);
-    }
-
-    #[test]
-    fn process_resolve_deposit_functionality() {
-        let mut engine = get_payments_engine();
-        let client = Client{
-            id: 1,
-            available: Decimal::from(0),
-            held: Decimal::from(0),
-            total: Decimal::from(0),
-            locked: false,
-        };
-        engine.client_db.update_client(&client);
-
-        let tx1 = Transaction{
-            tx_type: TransactionType::Deposit,
-            client: 1,
-            tx: 1,
-            amount: Some(Decimal::from(13)),
-        };
-        engine.process_deposit(&tx1);
-
-        let tx2 = Transaction{
-            tx_type: TransactionType::Deposit,
-            client: 1,
-            tx: 2,
-            amount: Some(Decimal::from(4)),
-        };
-        engine.process_deposit(&tx2);
-
-        let tx3 = Transaction{
-            tx_type: TransactionType::Dispute,
-            client: 1,
-            tx: 2,
-            amount: None,
-        };
-        engine.process_dispute(&tx3);
-
-        let tx4 = Transaction{
-            tx_type: TransactionType::Resolve,
-            client: 1,
-            tx: 2,  
-            amount: None,
-        };
-        engine.process_resolve(&tx4);
-
-        let updated_client = engine.client_db.get_client(client.id);
-        let expected_client = Client {
-            id: 1,
-            available: Decimal::from(17),
-            held: Decimal::from(0),
-            total: Decimal::from(17),
-            locked: false,
-        };
-        assert_eq!(updated_client, expected_client);
-    }
-
-    #[test]
     fn process_resolve_withdrawal_functionality() {
-        let mut engine = get_payments_engine();
-        let client = Client{
-            id: 1,
-            available: Decimal::from(0),
-            held: Decimal::from(0),
-            total: Decimal::from(0),
-            locked: false,
-        };
-        engine.client_db.update_client(&client);
-
-        let tx1 = Transaction{
-            tx_type: TransactionType::Deposit,
-            client: 1,
-            tx: 1,
-            amount: Some(Decimal::from(13)),
-        };
-        engine.process_deposit(&tx1);
-
-        let tx2 = Transaction{
-            tx_type: TransactionType::Withdrawal,
-            client: 1,
-            tx: 2,
-            amount: Some(Decimal::from(4)),
-        };
-        engine.process_withdrawal(&tx2);
-
-        let tx3 = Transaction{
-            tx_type: TransactionType::Dispute,
-            client: 1,
-            tx: 2,
-            amount: None,
-        };
-        engine.process_dispute(&tx3);
-
-        let tx4 = Transaction{
-            tx_type: TransactionType::Resolve,
-            client: 1,
-            tx: 2,
-            amount: None,
-        };
-        engine.process_resolve(&tx4);
-
-        let updated_client = engine.client_db.get_client(client.id);
+        let mut engine = get_test_payments_engine_10();
+        perform_deposit_1(&mut engine);
+        perform_withdrawal_2(&mut engine);
+        perform_dispute_tx2(&mut engine);
+        perform_resolve_tx2(&mut engine);
+        let client_id: u16 = 1;
+        let updated_client = engine.client_db.get_client(client_id);
         let expected_client = Client {
             id: 1,
             available: Decimal::from(9),
@@ -405,54 +341,18 @@ mod tests {
 
     #[test]
     fn process_chargeback_deposit_functionality() {
-        let mut engine = get_payments_engine();
-        let client = Client{
-            id: 1,
-            available: Decimal::from(0),
-            held: Decimal::from(0),
-            total: Decimal::from(0),
-            locked: false,
-        };
-        engine.client_db.update_client(&client);
-
-        let tx1 = Transaction{
-            tx_type: TransactionType::Deposit,
-            client: 1,
-            tx: 1,
-            amount: Some(Decimal::from(13)),
-        };
-        engine.process_deposit(&tx1);
-
-        let tx2 = Transaction{
-            tx_type: TransactionType::Deposit,
-            client: 1,
-            tx: 2,
-            amount: Some(Decimal::from(4)),
-        };
-        engine.process_deposit(&tx2);
-
-        let tx3 = Transaction{
-            tx_type: TransactionType::Dispute,
-            client: 1,
-            tx: 2,
-            amount: None,
-        };
-        engine.process_dispute(&tx3);
-
-        let tx4 = Transaction{
-            tx_type: TransactionType::Chargeback,
-            client: 1,
-            tx: 2,
-            amount: None,
-        };
-        engine.process_chargeback(&tx4);
-
-        let updated_client = engine.client_db.get_client(client.id);
+        let mut engine = get_test_payments_engine_10();
+        perform_deposit_1(&mut engine);
+        perform_withdrawal_2(&mut engine);
+        perform_dispute_tx1(&mut engine);
+        perform_chargeback_tx1(&mut engine);
+        let client_id: u16 = 1;
+        let updated_client = engine.client_db.get_client(client_id);
         let expected_client = Client {
             id: 1,
-            available: Decimal::from(13),
+            available: Decimal::from(8),
             held: Decimal::from(0),
-            total: Decimal::from(13),
+            total: Decimal::from(8),
             locked: true,
         };
         assert_eq!(updated_client, expected_client);
@@ -460,54 +360,18 @@ mod tests {
 
     #[test]
     fn process_chargeback_withdrawal_functionality() {
-        let mut engine = get_payments_engine();
-        let client = Client{
-            id: 1,
-            available: Decimal::from(0),
-            held: Decimal::from(0),
-            total: Decimal::from(0),
-            locked: false,
-        };
-        engine.client_db.update_client(&client);
-
-        let tx1 = Transaction{
-            tx_type: TransactionType::Deposit,
-            client: 1,
-            tx: 1,
-            amount: Some(Decimal::from(13)),
-        };
-        engine.process_deposit(&tx1);
-
-        let tx2 = Transaction{
-            tx_type: TransactionType::Withdrawal,
-            client: 1,
-            tx: 2,
-            amount: Some(Decimal::from(4)),
-        };
-        engine.process_withdrawal(&tx2);
-
-        let tx3 = Transaction{
-            tx_type: TransactionType::Dispute,
-            client: 1,
-            tx: 2,
-            amount: None,
-        };
-        engine.process_dispute(&tx3);
-
-        let tx4 = Transaction{
-            tx_type: TransactionType::Chargeback,
-            client: 1,
-            tx: 2,
-            amount: None,
-        };
-        engine.process_chargeback(&tx4);
-
-        let updated_client = engine.client_db.get_client(client.id);
+        let mut engine = get_test_payments_engine_10();
+        perform_deposit_1(&mut engine);
+        perform_withdrawal_2(&mut engine);
+        perform_dispute_tx2(&mut engine);
+        perform_chargeback_tx2(&mut engine);
+        let client_id: u16 = 1;
+        let updated_client = engine.client_db.get_client(client_id);
         let expected_client = Client {
             id: 1,
-            available: Decimal::from(13),
+            available: Decimal::from(11),
             held: Decimal::from(0),
-            total: Decimal::from(13),
+            total: Decimal::from(11),
             locked: true,
         };
         assert_eq!(updated_client, expected_client);
